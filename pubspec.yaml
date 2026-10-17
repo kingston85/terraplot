@@ -41,3 +41,8 @@ flutter:
           weight: 600
         - asset: assets/fonts/JetBrainsMono-Bold.ttf
           weight: 700
+
+dependency_overrides:
+  # 4.6.2 reads `flutter.compileSdkVersion`, which Flutter 3.24 does not expose
+  # to plugin projects. 4.6.1 works with the pinned Flutter 3.24.5.
+  geolocator_android: 4.6.1
