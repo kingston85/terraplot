@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +42,19 @@ jobs:
         run: flutter test
 
       - name: Build release APK
-        run: flutter build apk --release
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee build.log
+
+      - name: Report build error
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f build.log ]; then
+            msg=$(grep -n -A40 -E "What went wrong|error:|Error:|FAILURE" build.log | head -120 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Gradle build failed::${msg}"
+          fi
 
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk TerraPlot-LR-${{ github.run_number }}.apk
