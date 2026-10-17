@@ -1,7 +1,7 @@
 name: terraplot
 description: TerraPlot LR — free, offline GPS land survey app for Liberia.
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -12,6 +12,9 @@ dependencies:
   flutter_map: 7.0.2
   latlong2: ^0.9.1
   geolocator: ^13.0.1
+  path_provider: ^2.1.4
+  share_plus: ^10.1.4
+  pdf: ^3.10.8
 
 dev_dependencies:
   flutter_test:

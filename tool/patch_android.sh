@@ -23,7 +23,17 @@ import sys
 path = sys.argv[1]
 src = open(path).read()
 fix = '''// TERRAPLOT_SDK_FIX
-subprojects {
+subprojects { sp ->
+    // Newer plugins read `flutter.compileSdkVersion` etc., which Flutter 3.24
+    // only defines for the app module. Give plugin modules the same values.
+    if (sp.name != "app" && !sp.hasProperty("flutter")) {
+        sp.ext.flutter = [
+            compileSdkVersion: 34,
+            targetSdkVersion : 34,
+            minSdkVersion    : 21,
+            ndkVersion       : "23.1.7779620",
+        ]
+    }
     afterEvaluate { p ->
         if (p.hasProperty("android")) {
             p.android {

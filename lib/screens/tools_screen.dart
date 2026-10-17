@@ -6,6 +6,7 @@ import '../core/geo.dart';
 import '../data/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/components.dart';
+import 'coordinate_plot_screen.dart';
 import 'settings_screen.dart';
 
 class ToolsScreen extends StatelessWidget {
@@ -20,6 +21,18 @@ class ToolsScreen extends StatelessWidget {
         title: 'Coordinate converter',
         body: 'Lat/long ⇄ UTM Zone 29N, decimal ⇄ DMS',
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ConverterScreen())),
+      ),
+      _Tool(
+        icon: Icons.format_list_numbered_rounded,
+        title: 'Plot from coordinates',
+        body: 'Paste corners from a survey plan or notebook',
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CoordinatePlotScreen())),
+      ),
+      _Tool(
+        icon: Icons.straighten_rounded,
+        title: 'Distance and bearing',
+        body: 'Measure a line by tapping the map or walking',
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DistanceScreen())),
       ),
       _Tool(
         icon: Icons.download_for_offline_outlined,

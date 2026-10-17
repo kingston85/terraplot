@@ -9,9 +9,10 @@ import 'screens/projects_screen.dart';
 import 'screens/tools_screen.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
+  await state.init();
   runApp(TerraPlotApp(state: state));
   state.location.start();
 }
@@ -48,8 +49,28 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Save immediately when the app goes to the background.
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      AppScope.read(context).saveNow();
+    }
+  }
 
   static const _pages = <Widget>[
     MapHomeScreen(),

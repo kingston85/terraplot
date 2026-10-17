@@ -1,16 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../core/geo.dart';
 import '../core/location_service.dart';
 import 'models.dart';
+import 'storage.dart';
 
 enum CoordFormat { decimal, dms, utm }
 
 enum BaseMap { street, satellite, dark }
 
 /// App-wide state: settings, projects and the live GPS service.
-/// Phase 1 keeps data in memory; phase 4 adds the on-device database.
+/// Everything is saved to the phone automatically after each change.
 class AppState extends ChangeNotifier {
   final LocationService location = LocationService();
 
@@ -27,8 +30,72 @@ class AppState extends ChangeNotifier {
   // ----- Data -----
   final List<Project> projects = [];
 
-  AppState() {
-    _loadSamples();
+  bool _loaded = false;
+  Timer? _saveTimer;
+
+  /// Loads saved data, or the sample projects on first launch.
+  Future<void> init() async {
+    final data = await Storage.load();
+    if (data == null) {
+      _loadSamples();
+    } else {
+      _fromJson(data);
+    }
+    _loaded = true;
+  }
+
+  @override
+  void notifyListeners() {
+    super.notifyListeners();
+    _scheduleSave();
+  }
+
+  void _scheduleSave() {
+    if (!_loaded) return;
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 400), saveNow);
+  }
+
+  Future<void> saveNow() async {
+    _saveTimer?.cancel();
+    try {
+      await Storage.save(toJson());
+    } catch (_) {
+      // Saving is retried on the next change.
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+        'version': 1,
+        'settings': {
+          'sunlight': sunlight,
+          'areaUnit': areaUnit.name,
+          'lotSqm': lotSqm,
+          'accuracyLimit': accuracyLimit,
+          'surveyorName': surveyorName,
+          'coordFormat': coordFormat.name,
+          'baseMap': baseMap.name,
+          'motion': motion,
+        },
+        'projects': [for (final p in projects) p.toJson()],
+      };
+
+  void _fromJson(Map<String, dynamic> j) {
+    final s = (j['settings'] as Map?)?.cast<String, dynamic>() ?? const {};
+    sunlight = s['sunlight'] as bool? ?? sunlight;
+    areaUnit = AreaUnit.values.firstWhere((u) => u.name == s['areaUnit'], orElse: () => areaUnit);
+    lotSqm = (s['lotSqm'] as num?)?.toDouble() ?? lotSqm;
+    accuracyLimit = (s['accuracyLimit'] as num?)?.toDouble() ?? accuracyLimit;
+    surveyorName = s['surveyorName'] as String? ?? surveyorName;
+    coordFormat = CoordFormat.values.firstWhere((f) => f.name == s['coordFormat'], orElse: () => coordFormat);
+    baseMap = BaseMap.values.firstWhere((b) => b.name == s['baseMap'], orElse: () => baseMap);
+    motion = s['motion'] as bool? ?? motion;
+    projects
+      ..clear()
+      ..addAll([
+        for (final p in (j['projects'] as List? ?? const []))
+          Project.fromJson((p as Map).cast<String, dynamic>()),
+      ]);
   }
 
   void update(VoidCallback change) {

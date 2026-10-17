@@ -9,6 +9,7 @@ import '../data/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/components.dart';
 import '../widgets/map_layers.dart';
+import '../widgets/save_plot_sheet.dart';
 import 'plot_result_screen.dart';
 
 class MeasureScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _MeasureScreenState extends State<MeasureScreen> with SingleTickerProvider
   bool _follow = true;
   int? _selected;
   AppState? _app;
+  DateTime _lastCornerTap = DateTime(2000);
 
   /// Minimum spacing between auto-walk corners, in metres.
   static const double _autoSpacing = 3.0;
@@ -149,22 +151,19 @@ class _MeasureScreenState extends State<MeasureScreen> with SingleTickerProvider
     }
     setState(() => _recording = false);
     final app = AppScope.read(context);
-    final result = await showModalBottomSheet<_SaveResult>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => AppScope(state: app, child: _SaveSheet(area: Geo.area(_pts))),
-    );
+    final result = await showSavePlotSheet(context, Geo.area(_pts));
     if (result == null || !mounted) return;
-    final project = result.project ?? app.addProject(result.newProjectName ?? 'My survey');
-    final plot = Plot(
-      id: newId(),
-      name: result.name,
-      corners: List<LatLng>.from(_pts),
-      cornerAccuracy: List<double>.from(_acc),
-      method: _mode,
+    final plot = savePlotFromResult(
+      app,
+      result,
+      Plot(
+        id: newId(),
+        name: result.name,
+        corners: List<LatLng>.from(_pts),
+        cornerAccuracy: List<double>.from(_acc),
+        method: _mode,
+      ),
     );
-    app.addPlot(project, plot);
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => PlotResultScreen(plot: plot)),
@@ -226,6 +225,7 @@ class _MeasureScreenState extends State<MeasureScreen> with SingleTickerProvider
                     if (hasGesture && _follow) setState(() => _follow = false);
                   },
                   onTap: (tap, latlng) {
+                    if (DateTime.now().difference(_lastCornerTap).inMilliseconds < 350) return;
                     if (_mode == MeasureMode.map) {
                       _addCorner(latlng, 0);
                     } else if (_selected != null) {
@@ -241,7 +241,10 @@ class _MeasureScreenState extends State<MeasureScreen> with SingleTickerProvider
                     color: c.accent,
                     closed: _pts.length >= 3,
                     selected: _selected,
-                    onCornerTap: (i) => setState(() => _selected = _selected == i ? null : i),
+                    onCornerTap: (i) {
+                      _lastCornerTap = DateTime.now();
+                      setState(() => _selected = _selected == i ? null : i);
+                    },
                   ),
                   ...userLocationLayers(context, app),
                 ],
@@ -655,116 +658,6 @@ class _SelectedCornerBar extends StatelessWidget {
             tooltip: 'Delete corner',
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SaveResult {
-  final String name;
-  final Project? project;
-  final String? newProjectName;
-  _SaveResult(this.name, this.project, this.newProjectName);
-}
-
-class _SaveSheet extends StatefulWidget {
-  final double area;
-  const _SaveSheet({required this.area});
-
-  @override
-  State<_SaveSheet> createState() => _SaveSheetState();
-}
-
-class _SaveSheetState extends State<_SaveSheet> {
-  final _name = TextEditingController(text: 'Plot ${timeOfDay(DateTime.now())}');
-  final _newProject = TextEditingController();
-  Project? _project;
-  bool _creating = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final app = AppScope.read(context);
-    _project ??= app.projects.where((p) => !p.sample).isNotEmpty
-        ? app.projects.firstWhere((p) => !p.sample)
-        : null;
-    if (_project == null) _creating = true;
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _newProject.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final c = context.tp;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Save plot', style: TPText.title(c.ink)),
-            const SizedBox(height: 4),
-            Text(app.formatArea(widget.area), style: TPText.reading(15, c.accent, weight: FontWeight.w700)),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Plot name'),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 18),
-            const PanelLabel('Project'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final p in app.projects)
-                  ChoiceChip(
-                    label: Text(p.name),
-                    selected: !_creating && _project == p,
-                    avatar: CircleAvatar(backgroundColor: p.color, radius: 6),
-                    onSelected: (_) => setState(() {
-                      _project = p;
-                      _creating = false;
-                    }),
-                  ),
-                ChoiceChip(
-                  label: const Text('+ New project'),
-                  selected: _creating,
-                  onSelected: (_) => setState(() => _creating = true),
-                ),
-              ],
-            ),
-            if (_creating) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _newProject,
-                decoration: const InputDecoration(labelText: 'New project name'),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () {
-                  final name = _name.text.trim().isEmpty ? 'Untitled plot' : _name.text.trim();
-                  final np = _newProject.text.trim().isEmpty ? 'My survey' : _newProject.text.trim();
-                  Navigator.pop(context, _SaveResult(name, _creating ? null : _project, _creating ? np : null));
-                },
-                icon: const Icon(Icons.save_rounded),
-                label: const Text('Save and view result'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -37,6 +37,20 @@ Plan: the "TerraPlot LR — GPS Land Survey App Plan" doc (six phases).
 
 - Phase 2: offline map downloads (needs a tile provider that allows caching).
 - Phase 3: drag/insert corners, field-sheet editing.
-- Phase 4: on-device database (data is in memory in phase 1), photos, compass.
-- Phase 5: KML / GPX / CSV / GeoJSON / PDF export and import, sharing.
+- Phase 4: photos, compass. (Storage done in 0.2.)
+- Phase 5: file import. (Export and sharing done in 0.2.)
 - Phase 6: field testing, Play Store signing and release.
+
+## Version 0.2 — added
+
+- Data saved on the phone (JSON in app documents, atomic writes, save on
+  background). Samples only on first launch.
+- Export and share: PDF site report (sketch, scale bar, north arrow, figures,
+  corner table, signature block), KML, GPX, CSV, GeoJSON for plots and projects.
+- Full data backup from Settings.
+- Plot editing: select a corner, tap map to move, move to GPS, insert after,
+  delete, reverse; rename and notes.
+- Plot from coordinates: paste UTM 29N or lat/long corners (labels ignored).
+- Distance and bearing tool.
+- Point editing (name, type, note); project rename.
+- CI: plugin modules get `flutter.*` SDK values (Flutter 3.24 workaround).

@@ -4,6 +4,7 @@ import '../core/geo.dart';
 import '../data/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/components.dart';
+import '../widgets/export_sheet.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -140,7 +141,7 @@ class SettingsScreen extends StatelessWidget {
           TPCard(
             child: TextFormField(
               initialValue: app.surveyorName,
-              onChanged: (v) => app.surveyorName = v,
+              onChanged: (v) => app.update(() => app.surveyorName = v),
               decoration: const InputDecoration(
                 labelText: 'Surveyor name',
                 hintText: 'Printed on PDF site reports',
@@ -149,12 +150,27 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
 
+          const SectionHeader('Data'),
+          TPCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: Icon(Icons.backup_outlined, color: c.accent),
+              title: Text('Back up all data', style: TPText.body(c.ink, weight: FontWeight.w600)),
+              subtitle: Text('Share every project as one file (send it to yourself or Drive)',
+                  style: TPText.body(c.inkDim, size: 12.5)),
+              trailing: Icon(Icons.ios_share_rounded, color: c.inkDim),
+              onTap: () => shareBackup(context),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text('Everything is saved on this phone automatically.', style: TPText.body(c.inkDim, size: 12)),
+
           const SectionHeader('About'),
           TPCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('TerraPlot LR · version 0.1 (phase 1)', style: TPText.body(c.ink, weight: FontWeight.w700)),
+                Text('TerraPlot LR · version 0.2', style: TPText.body(c.ink, weight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 Text(
                   'Phone GPS is usually accurate to about 3–5 m under open sky, and worse under trees or near buildings. '

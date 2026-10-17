@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../data/app_state.dart';
 import '../data/models.dart';
 import '../theme/app_theme.dart';
+import '../core/exporters.dart';
 import '../widgets/components.dart';
+import '../widgets/export_sheet.dart';
 import 'points_screen.dart';
 import 'plot_result_screen.dart';
 
@@ -225,8 +227,42 @@ class ProjectDetailScreen extends StatelessWidget {
         appBar: AppBar(
           title: Text(project.name),
           actions: [
+            IconButton(
+              tooltip: 'Export and share',
+              icon: const Icon(Icons.ios_share_rounded),
+              onPressed: () => showExportSheet(context, ExportBundle.project(project)),
+            ),
             PopupMenuButton<String>(
               onSelected: (v) async {
+                if (v == 'rename') {
+                  final ctrl = TextEditingController(text: project.name);
+                  final desc = TextEditingController(text: project.description);
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Project details'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Name')),
+                          const SizedBox(height: 12),
+                          TextField(controller: desc, decoration: const InputDecoration(labelText: 'Description')),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
+                      ],
+                    ),
+                  );
+                  if (ok == true && ctrl.text.trim().isNotEmpty) {
+                    app.update(() {
+                      project.name = ctrl.text.trim();
+                      project.description = desc.text.trim();
+                      project.sample = false;
+                    });
+                  }
+                }
                 if (v == 'delete') {
                   final ok = await showDialog<bool>(
                     context: context,
@@ -246,6 +282,7 @@ class ProjectDetailScreen extends StatelessWidget {
                 }
               },
               itemBuilder: (_) => const [
+                PopupMenuItem(value: 'rename', child: Text('Rename')),
                 PopupMenuItem(value: 'delete', child: Text('Delete project')),
               ],
             ),

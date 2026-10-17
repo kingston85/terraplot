@@ -7,7 +7,10 @@ import '../data/app_state.dart';
 import '../data/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/components.dart';
+import '../core/exporters.dart';
+import '../widgets/export_sheet.dart';
 import '../widgets/map_layers.dart';
+import 'plot_edit_screen.dart';
 
 class PlotResultScreen extends StatelessWidget {
   final Plot plot;
@@ -81,6 +84,19 @@ class PlotResultScreen extends StatelessWidget {
                           onTap: () => Navigator.pop(context),
                         ),
                         const Spacer(),
+                        MapButton(
+                          icon: Icons.edit_location_alt_outlined,
+                          tooltip: 'Edit corners',
+                          onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => PlotEditScreen(plot: plot))),
+                        ),
+                        const SizedBox(width: 8),
+                        MapButton(
+                          icon: Icons.edit_note_rounded,
+                          tooltip: 'Rename and notes',
+                          onTap: () => _rename(context, app),
+                        ),
+                        const SizedBox(width: 8),
                         MapButton(
                           icon: Icons.delete_outline_rounded,
                           tooltip: 'Delete plot',
@@ -199,18 +215,21 @@ class PlotResultScreen extends StatelessWidget {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    for (final f in const [
-                      ['PDF report', Icons.picture_as_pdf_rounded],
-                      ['KML', Icons.public_rounded],
-                      ['GPX', Icons.route_rounded],
-                      ['CSV', Icons.table_chart_rounded],
-                      ['GeoJSON', Icons.data_object_rounded],
-                    ])
-                      _ExportChip(
-                        label: f[0] as String,
-                        icon: f[1] as IconData,
-                        onTap: () => showComingSoon(context, '${f[0]} export', 'phase 5'),
-                      ),
+                    _ExportChip(
+                      label: 'PDF report',
+                      icon: Icons.picture_as_pdf_rounded,
+                      onTap: () => shareExport(context, ExportFormat.pdf, ExportBundle.plot(plot)),
+                    ),
+                    _ExportChip(
+                      label: 'Google Earth (KML)',
+                      icon: Icons.public_rounded,
+                      onTap: () => shareExport(context, ExportFormat.kml, ExportBundle.plot(plot)),
+                    ),
+                    _ExportChip(
+                      label: 'More formats',
+                      icon: Icons.ios_share_rounded,
+                      onTap: () => showExportSheet(context, ExportBundle.plot(plot)),
+                    ),
                     _ExportChip(
                       label: 'Copy coordinates',
                       icon: Icons.copy_rounded,
@@ -237,6 +256,44 @@ class PlotResultScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _rename(BuildContext context, AppState app) async {
+    final name = TextEditingController(text: plot.name);
+    final note = TextEditingController(text: plot.note);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Plot details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: name,
+              decoration: const InputDecoration(labelText: 'Name'),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: note,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Notes'),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      app.update(() {
+        if (name.text.trim().isNotEmpty) plot.name = name.text.trim();
+        plot.note = note.text.trim();
+      });
+    }
   }
 
   Future<void> _delete(BuildContext context, AppState app) async {

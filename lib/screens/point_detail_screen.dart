@@ -73,6 +73,12 @@ class PointDetailScreen extends StatelessWidget {
                       ),
                       const Spacer(),
                       MapButton(
+                        icon: Icons.edit_note_rounded,
+                        tooltip: 'Edit point',
+                        onTap: () => _editPoint(context, app, point),
+                      ),
+                      const SizedBox(width: 8),
+                      MapButton(
                         icon: Icons.delete_outline_rounded,
                         tooltip: 'Delete point',
                         onTap: () async {
@@ -194,6 +200,56 @@ class PointDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _editPoint(BuildContext context, AppState app, SurveyPoint point) async {
+  {
+    final name = TextEditingController(text: point.name);
+    final note = TextEditingController(text: point.note);
+    var type = point.type;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: const Text('Edit point'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final t in PointType.values)
+                      ChoiceChip(
+                        label: Text(t.label),
+                        selected: type == t,
+                        onSelected: (_) => setLocal(() => type = t),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: note, maxLines: 3, decoration: const InputDecoration(labelText: 'Note')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
+          ],
+        ),
+      ),
+    );
+    if (ok == true) {
+      app.update(() {
+        if (name.text.trim().isNotEmpty) point.name = name.text.trim();
+        point.note = note.text.trim();
+        point.type = type;
+      });
+    }
   }
 }
 
