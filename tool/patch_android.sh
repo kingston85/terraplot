@@ -12,6 +12,41 @@ fi
 # App name shown under the icon
 sed -i 's#android:label="[^"]*"#android:label="TerraPlot LR"#' "$MANIFEST"
 
+# Give every plugin project a compileSdkVersion. Some plugins (geolocator)
+# read flutter.compileSdkVersion, which is null for plugins on Flutter 3.24,
+# so AGP fails with "compileSdkVersion is not specified". The hook must be
+# registered before `evaluationDependsOn(":app")` evaluates the plugins.
+ROOT_GRADLE=android/build.gradle
+if [ -f "$ROOT_GRADLE" ] && ! grep -q "TERRAPLOT_SDK_FIX" "$ROOT_GRADLE"; then
+  python3 - "$ROOT_GRADLE" <<'PY'
+import sys
+path = sys.argv[1]
+src = open(path).read()
+fix = '''// TERRAPLOT_SDK_FIX
+subprojects {
+    afterEvaluate { p ->
+        if (p.hasProperty("android")) {
+            p.android {
+                if (compileSdkVersion == null) {
+                    compileSdkVersion 34
+                }
+            }
+        }
+    }
+}
+
+'''
+marker = "subprojects {\n    project.evaluationDependsOn"
+i = src.find(marker)
+if i < 0:
+    i = src.find("subprojects")
+src = src[:i] + fix + src[i:] if i >= 0 else src + "\n" + fix
+open(path, "w").write(src)
+PY
+fi
+echo "Root build.gradle:"
+cat "$ROOT_GRADLE" || true
+
 # Launcher icons
 cp -r android_overrides/res/. android/app/src/main/res/
 
